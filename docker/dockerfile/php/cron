@@ -1,0 +1,1 @@
+* * * * * www-data /usr/local/bin/php /var/www/km6020_src/artisan schedule:run >> /dev/null 2>&1

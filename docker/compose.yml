@@ -1,0 +1,114 @@
+services:
+  apache:
+    depends_on:
+      - postgresql
+      - php
+    image: ${REPOSITORY}/${APACHE}
+    init: true 
+    networks:
+      - network
+    volumes:
+      - type: bind
+        source: ${DIR_LOCAL_SRC}
+        target: ${DIR_CONTAINER_SRC}
+      - type: bind
+        source: ${DIR_LOCAL_DATA}
+        target: ${DIR_CONTAINER_DATA}
+      - type: bind
+        source: ${LOCAL_SSL_CERT_KEY}
+        target: ${CONTAINER_SSL_CERT_KEY}
+      - type: bind
+        source: ${LOCAL_SSL_PRIV_KEY}
+        target: ${CONTAINER_SSL_PRIV_KEY}
+    ports:
+      - "${PORT_HTTP}:80"
+      - "${PORT_HTTPS}:443"
+    restart: always
+    environment:
+      - SYMLINK_SRC=${DIR_CONTAINER_SRC}/public
+      - SYMLINK_DST=/var/www/html/dnetv3
+    stop_signal: SIGKILL
+
+  php:
+    image: ${REPOSITORY}/${PHP}
+    init: true
+    networks:
+      - network
+    volumes:
+      - type: bind
+        source: ${DIR_LOCAL_SRC}
+        target: ${DIR_CONTAINER_SRC}
+      - type: bind
+        source: ${DIR_LOCAL_DATA}
+        target: ${DIR_CONTAINER_DATA}
+    restart: always
+    environment:
+      - SYMLINK_SRC=${DIR_CONTAINER_SRC}/public
+      - SYMLINK_DST=/var/www/html/dnetv3
+
+  postgresql:
+    image: ${REPOSITORY}/${POSTGRESQL}
+    init: true
+    networks:
+      - network
+    volumes:
+      - type: volume
+        source: postgresql
+        target: /var/lib/postgresql/data
+    restart: always
+    environment:
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+
+  vsftp:
+    image: ${REPOSITORY}/${VSFTP}
+    init: true
+    networks:
+      - network
+    volumes:
+      - type: bind
+        source: ${DIR_LOCAL_DATA}
+        target: ${DIR_CONTAINER_DATA}
+    restart: always
+    ports:
+      - "${PORT_FTP}:21"
+      - "${PORT_FTP_PASV_START}-${PORT_FTP_PASV_END}:${PORT_FTP_PASV_START}-${PORT_FTP_PASV_END}"
+    environment:
+      - PASV_ADDRESS=${FTP_PASV_ADDRESS:-localhost}
+      - PASV_MIN_PORT=${PORT_FTP_PASV_START}
+      - PASV_MAX_PORT=${PORT_FTP_PASV_END}
+
+  # postfix:
+  #   image: catatnight/postfix
+  #   networks:
+  #     - network
+  #   environment:
+  #     - maildomain=mail.example.com
+  #     - smtp_user=user:pwd
+
+  # mailhog:
+  #   image: mailhog/mailhog
+  #   init: true
+  #   networks:
+  #     - network
+  #   restart: always
+  #   ports:
+  #     - "${PORT_MAILHOG}:8025"
+
+  mailpit:
+    image: axllent/mailpit:latest
+    init: true
+    networks:
+      - network
+    ports:
+      - "${PORT_MAIL_WEBUI}:8025"
+    environment:
+      - MP_MAX_MESSAGES=1000  # 保存するメッセージの最大数
+    restart: always
+
+networks:
+  network:
+
+volumes:
+  postgresql:
